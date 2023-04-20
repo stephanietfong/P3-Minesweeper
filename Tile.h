@@ -23,20 +23,29 @@ public:
 		tilesprite.setTexture(texture);
 		tilesprite.setPosition(positionx, positiony);
 	}
-
-	string getTexture() { return "texture"; }
 };
 
+
+class Button : public Tile {
+public:
+	Button(sf::Texture& texture, float positionx, float positiony) : Tile(texture, positionx, positiony) {}
+};
+
+class Hidden : public Tile {
+public:
+	bool hasbeenrevealed = false;
+	Hidden(sf::Texture& texture, float positionx, float positiony) : Tile(texture, positionx, positiony) {}
+};
 
 class Flag : public Tile {
 public:
 	bool flagplaced = true;
 	Flag(sf::Texture& texture, float positionx, float positiony) : Tile(texture, positionx, positiony) {}
 
-	bool isflagplaced(Flag& flag) {
+	/*bool isflagplaced(Flag& flag) {
 		if (!flagplaced) {return false;}
 		return true;
-	}
+	}*/
 };
 
 class Mine : public Tile {
@@ -50,13 +59,12 @@ class Number : public Tile {
 public: 
 	Number** neighbors;
 	bool isrevealed = false;
-	bool ismine;
+	bool ismine = false;
 
 	Number(sf::Texture& texture, float positionx, float positiony) : Tile(texture, positionx, positiony) {
 		neighbors = new Number* [8] {nullptr};
 	}
-
-
+	
 	void determine_neighbors(vector<vector<int>>& configuration, vector<vector<Number>>& numberedtiles, int tilerow, int tilecol) {
 		int numBombs = 0;
 		if (tilerow == 0) {
@@ -97,7 +105,7 @@ public:
 				numBombs += 1; }
 
 			if (tilecol != configuration.at(tilerow).size() - 1) {
-				neighbors[4] = &numberedtiles.at(0).at(tilecol + 1);
+				neighbors[4] = &numberedtiles.at(tilerow).at(tilecol + 1);
 				neighbors[2] = &numberedtiles.at(tilerow - 1).at(tilecol + 1);
 
 				if (configuration.at(tilerow).at(tilecol + 1) == 9) { 
@@ -151,13 +159,13 @@ public:
 		}
 
 		else if (tilecol == configuration.at(tilerow).size() - 1) {
-			neighbors[3] = &numberedtiles.at(tilerow - 1).at(tilecol);
+			neighbors[3] = &numberedtiles.at(tilerow).at(tilecol - 1);
 			if (configuration.at(tilerow).at(tilecol - 1) == 9) {
 				numberedtiles.at(tilerow).at(tilecol - 1).ismine = true;
 				numBombs += 1;}
 			if (tilerow != 0) {
-				neighbors[1] = &numberedtiles.at(tilerow - 1).at(0);
-				neighbors[0] = &numberedtiles.at(tilerow - 1).at(1);
+				neighbors[1] = &numberedtiles.at(tilerow - 1).at(tilecol);
+				neighbors[0] = &numberedtiles.at(tilerow - 1).at(tilecol);
 
 
 				if (configuration.at(tilerow - 1).at(tilecol) == 9) { 
@@ -175,7 +183,7 @@ public:
 					numberedtiles.at(tilerow + 1).at(tilecol - 1).ismine = true;
 					numBombs += 1; }
 				if (configuration.at(tilerow + 1).at(tilecol) == 9) { 
-					numberedtiles.at(tilerow - 1).at(tilecol - 1).ismine = true;
+					numberedtiles.at(tilerow + 1).at(tilecol).ismine = true;
 					numBombs += 1; }
 			}
 		}
@@ -184,7 +192,7 @@ public:
 			neighbors[0] = &numberedtiles.at(tilerow - 1).at(tilecol - 1);
 			neighbors[1] = &numberedtiles.at(tilerow - 1).at(tilecol);
 			neighbors[2] = &numberedtiles.at(tilerow - 1).at(tilecol + 1);
-			neighbors[3] = &numberedtiles.at(tilerow).at(tilecol);
+			neighbors[3] = &numberedtiles.at(tilerow).at(tilecol-1);
 			neighbors[4] = &numberedtiles.at(tilerow).at(tilecol + 1);
 			neighbors[5] = &numberedtiles.at(tilerow + 1).at(tilecol - 1);
 			neighbors[6] = &numberedtiles.at(tilerow + 1).at(tilecol);
@@ -219,7 +227,6 @@ public:
 			configuration.at(tilerow).at(tilecol) = numBombs;
 		}
 	}
-
 	/*~Number() {
 		delete[] neighbors;
 	}*/

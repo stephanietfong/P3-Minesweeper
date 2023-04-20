@@ -63,25 +63,38 @@ int main() {
 	sf::Text inputPromptText = setText(font, sf::String("Enter your name:"), 20, sf::Color::White, sf::Vector2f(width / 2.0f, height / 2.0f - 75), true, false);
 	sf::Text inputText = setText(font, name, 18, sf::Color::Yellow, sf::Vector2f(width / 2.0f, height / 2.0f - 45), true, false);
 
-	Texture texture;
+	Texture texture(rows);
+
+	Digit counter(texture.digits, 33, 32 * ( rows + 0.5f) + 16);
+	Digit first_minute(texture.digits, columns * 32 - 97, 32 * (rows + 0.5f) + 16); 
+	Digit sec_minute(texture.digits, columns * 32 - 76, 32 * (rows + 0.5f) + 16);
+	Digit first_second(texture.digits, columns * 32 - 54, 32 * (rows + 0.5f) + 16);
+	Digit sec_second(texture.digits, columns * 32 - 33, 32 * (rows + 0.5f) + 16);
+	vector<Digit> digits;
+	digits.push_back(counter);
+	digits.push_back(first_minute);
+	digits.push_back(sec_minute);
+	digits.push_back(first_second);
+	digits.push_back(sec_second);
 
 	vector<Button> buttons;
 	Button happyface(texture.happy, (columns / 2.0) * 32 - 32, (32 * rows) + 0.5f);
 	Button debug(texture.debug, (columns * 32) - 304, (32 * rows) + 0.5f);
 	Button pause(texture.pause, (columns * 32) - 240, (32 * rows) + 0.5f);
 	Button play(texture.play, (columns * 32) - 240, (32 * rows) + 0.5f);
-	Button leadership(texture.leaderboard, (columns * 32) - 176, (32 * rows) + 0.5f);
+	Button leaderboard(texture.leaderboard, (columns * 32) - 176, (32 * rows) + 0.5f);
 	Button lose(texture.lose, (columns / 2.0) * 32 - 32, (32 * rows) + 0.5f);
+	Button win(texture.win, (columns / 2.0) * 32 - 32, (32 * rows) + 0.5f);
 	buttons.push_back(happyface);
 	buttons.push_back(debug);
 	buttons.push_back(pause);
 	buttons.push_back(play);
-	buttons.push_back(leadership);
+	buttons.push_back(leaderboard);
 	buttons.push_back(lose);
+	buttons.push_back(win);
 
-	Board board(columns, rows, numMines, buttons);
+	Board board(columns, rows, numMines, buttons, digits);
 	board.create_board(texture);
-
 
 	while (welcomeWindow.isOpen()) {
 		sf::Event event;
@@ -131,21 +144,42 @@ int main() {
 			if (event.type == sf::Event::MouseButtonPressed) {
 				sf::Mouse mouse;
 				auto coordinate = mouse.getPosition(gameWindow);
-				if (event.mouseButton.button == sf::Mouse::Right) {
-					board.placeremove_flag(coordinate.x, coordinate.y, texture);
-				}
-				if (event.mouseButton.button == sf::Mouse::Left) {
-					auto debugcoordinates = debug.buttonsprite.getGlobalBounds();
-					if (debugcoordinates.contains(coordinate.x, coordinate.y)) {
-						board.debugmode = !board.debugmode;
+				if (!board.gamelost && !board.gamewon) {
+					if (event.mouseButton.button == sf::Mouse::Right) {
+						board.placeremove_flag(coordinate.x, coordinate.y, texture);
 					}
-					board.check(coordinate.x, coordinate.y, texture);
+					if (event.mouseButton.button == sf::Mouse::Left) {
+						auto debugcoordinates = debug.tilesprite.getGlobalBounds();
+						auto restartcoordinates = happyface.tilesprite.getGlobalBounds();
+						auto pausecoordinates = pause.tilesprite.getGlobalBounds();
+						auto leaderboardcoordinates = leaderboard.tilesprite.getGlobalBounds();
+						if (restartcoordinates.contains(coordinate.x, coordinate.y)) {
+							board.reset();
+							board.create_board(texture);
+						}
+						if (pausecoordinates.contains(coordinate.x, coordinate.y)) {
+							board.ispause = !board.ispause;
+						}
+						if (leaderboardcoordinates.contains(coordinate.x, coordinate.y)) {
+							board.ispause = !board.ispause;
+						}
+						if (debugcoordinates.contains(coordinate.x, coordinate.y) && !board.ispause) {
+							board.debugmode = !board.debugmode;
+						}
+						if (!board.ispause) {
+							board.check(coordinate.x, coordinate.y, texture);
+							board.gamewon = board.check_if_won();
+						}
+					}
 				}
-
+				else {
+					
+				}
 			}
+			
 
 		}
-		gameWindow.clear();
+		gameWindow.clear(sf::Color::White);
 		board.draw_board(gameWindow, texture);
 		gameWindow.display();
 	}
