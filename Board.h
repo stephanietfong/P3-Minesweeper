@@ -5,7 +5,6 @@
 #include <cmath>
 #include <SFML/Graphics.hpp>
 #include "Tile.h"
-#include "Digits.h"
 #include "Texture.h"
 
 mt19937 random_mt;
@@ -15,10 +14,15 @@ struct Board {
 	int columns;
 	int rows;
 	int numMines;
+
+	int time;
+	int pausetime;
 	bool ispause = false;
+	bool leaderboardopen = false;
 	bool debugmode = false;
 	bool gamewon = false;
 	bool gamelost = false;
+	bool gameoverscreenshown = false;
 
 	vector<vector<int>> configuration;
 	vector<vector<Hidden>> hiddentiles;
@@ -35,6 +39,20 @@ struct Board {
 		this->numMines = mines;
 		this->buttons = buttons;
 		this->digits = digits;
+		this->time = 0;
+		this->pausetime = 0;
+	}
+
+	void settime(int time) {
+		this->time = time;
+	}
+
+	void addpausetime(int passtime) {
+		this->pausetime += passtime;
+	}
+
+	int get_time() {
+		return time - pausetime;
 	}
 
 	void reset() {
@@ -45,7 +63,7 @@ struct Board {
 		mines.clear();
 	}
 
-	void create_board(Texture& texture) {
+	void create_board(Texture& texture, int numMines) {
 		vector<int> tempvector;
 		for (int i = 0; i < rows; i++) {
 			for (int j = 0; j < columns; j++) {
@@ -85,7 +103,6 @@ struct Board {
 			numberedtiles.push_back(temp_nums);
 			temp_hiddens.clear();
 			temp_nums.clear();
-
 		}
 
 		for (int i = 0; i < configuration.size(); i++) {
@@ -132,13 +149,10 @@ struct Board {
 			}
 		}
 
-		for (int i = 0; i < rows; i++) {
-			for (int j = 0; j < columns; j++) {
-				cout << configuration.at(i).at(j) << " ";
-			}
-			cout << endl;
-		}
-		cout << endl;
+		int first_digit_counter = numMines / 10;
+		int second_digit_counter = numMines % 10;
+		digits.at(0).change_display(first_digit_counter);
+		digits.at(1).change_display(second_digit_counter);
 	}
 
 	void draw_board(sf::RenderWindow& window, Texture& texture) {
@@ -147,7 +161,27 @@ struct Board {
 			window.draw(buttons.at(i).tilesprite);
 			if (!ispause && i == 2) { i++; }
 		}
-		
+
+		int counter = numMines - flags.size();
+		if (counter < 0) {
+			digits.at(6).change_display(10);
+			window.draw(digits.at(6).tilesprite);
+		}
+
+		int realtime = time - pausetime;
+		if (!ispause && !gamelost && !gamewon && !leaderboardopen) {
+			int minutes = realtime / 60;
+			int seconds = realtime - (minutes * 60);
+			digits.at(2).change_display(minutes / 10);
+			digits.at(3).change_display(minutes % 10);
+			digits.at(4).change_display(seconds / 10);
+			digits.at(5).change_display(seconds % 10);
+		}
+
+		for (int i = 0; i < digits.size() - 1; i++) {
+			window.draw(digits.at(i).tilesprite);
+		}
+
 		for (int i = 0; i < rows; i++) {
 			for (int j = 0; j < columns; j++) {
 				window.draw(hiddentiles.at(i).at(j).tilesprite);
@@ -170,7 +204,6 @@ struct Board {
 
 		for (int i = 0; i < mines.size(); i++) {
 			if (mines.at(i).mineclicked) {
-				//hiddentiles.at(mines.at(i).positiony / 32).at(mines.at(i).positionx / 32).tilesprite.setTexture(texture.revealed);
 				window.draw(numberedtiles.at(mines.at(i).positiony / 32).at(mines.at(i).positionx / 32).tilesprite);
 				window.draw(mines.at(i).tilesprite);
 			}
@@ -181,7 +214,7 @@ struct Board {
 				window.draw(mines.at(i).tilesprite);
 			}
 		}
-		
+
 		if (gamewon) {
 			window.draw(buttons.at(6).tilesprite);
 		}
@@ -205,7 +238,7 @@ struct Board {
 			window.draw(buttons.at(5).tilesprite);
 		}
 
-		if (ispause) {
+		if (ispause || (leaderboardopen && !gamewon && !gamelost)) {
 			for (int i = 0; i < rows; i++) {
 				for (int j = 0; j < columns; j++) {
 					sf::Sprite revealed;
@@ -222,6 +255,12 @@ struct Board {
 			auto flagcoordinates = flags.at(i).tilesprite.getGlobalBounds();
 			if (flagcoordinates.contains(coordinatex, coordinatey)) {
 				flags.erase(flags.begin() + i);
+				int counter = numMines - flags.size();
+				if (counter < 0) {
+					counter *= -1;
+				}
+				digits.at(0).change_display(counter / 10);
+				digits.at(1).change_display(counter % 10);
 				return;
 			}
 		}
@@ -232,6 +271,12 @@ struct Board {
 				if (tilecoordinates.contains(coordinatex, coordinatey) && !hiddentiles.at(i).at(j).hasbeenrevealed) {
 					Flag flag_tile(texture.flag, hiddentiles.at(i).at(j).positionx, hiddentiles.at(i).at(j).positiony);
 					flags.push_back(flag_tile);
+					int counter = numMines - flags.size();
+					if (counter < 0) {
+						counter *= -1;
+					}
+					digits.at(0).change_display(counter / 10);
+					digits.at(1).change_display(counter % 10);
 					return;
 				}
 			}
@@ -240,6 +285,12 @@ struct Board {
 
 	void reveal_neighbors(Number& tile, Texture& texture, int row, int col) {
 		if (tile.isrevealed || tile.ismine) { return; }
+		for (int i = 0; i < flags.size(); i++) {
+			auto flagcoordinates = flags.at(i).tilesprite.getGlobalBounds();
+			if (flagcoordinates.contains(tile.positionx, tile.positiony)) {
+				return;
+			}
+		}
 		tile.isrevealed = true;
 		hiddentiles.at(row).at(col).hasbeenrevealed = true;
 		if (tile.tilesprite.getTexture() == &(texture.revealed)) {
@@ -271,6 +322,13 @@ struct Board {
 	}
 
 	void check(float xcoordinate, float ycoordinate, Texture& texture) {
+		for (int i = 0; i < flags.size(); i++) {
+			auto flagcoordinates = flags.at(i).tilesprite.getGlobalBounds();
+			if (flagcoordinates.contains(xcoordinate, ycoordinate)) {
+				return;
+			}
+		}
+
 		for (int i = 0; i < mines.size(); i++) {
 			auto minecoordinates = mines.at(i).tilesprite.getGlobalBounds();
 			if (minecoordinates.contains(xcoordinate, ycoordinate)) {
@@ -299,10 +357,4 @@ struct Board {
 		}
 		return true;
 	}
-
-	/*void debug_mode(sf::RenderWindow& window) {
-		for (int i = 0; i < mines.size(); i++) {
-			window.draw(mines.at(i).tilesprite);
-		}
-	}*/
 };

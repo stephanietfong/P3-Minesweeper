@@ -25,7 +25,7 @@ struct Texture {
 	sf::Texture eight;
 	sf::Texture digits;
 
-	Texture(int rows) {
+	Texture() {
 		hidden.loadFromFile("files/images/tile_hidden.png");
 		happy.loadFromFile("files/images/face_happy.png");
 		debug.loadFromFile("files/images/debug.png");

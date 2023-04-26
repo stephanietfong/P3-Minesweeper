@@ -25,6 +25,16 @@ public:
 	}
 };
 
+class Digit : public Tile {
+public:
+	Digit(sf::Texture& texture, float positionx, float positiony) : Tile(texture, positionx, positiony) {
+		tilesprite.setTextureRect(sf::IntRect(0 * 21, 0, 21, 32));
+	}
+
+	void change_display(int num) {
+		tilesprite.setTextureRect(sf::IntRect(num * 21, 0, 21, 32));
+	}
+};
 
 class Button : public Tile {
 public:
@@ -41,11 +51,6 @@ class Flag : public Tile {
 public:
 	bool flagplaced = true;
 	Flag(sf::Texture& texture, float positionx, float positiony) : Tile(texture, positionx, positiony) {}
-
-	/*bool isflagplaced(Flag& flag) {
-		if (!flagplaced) {return false;}
-		return true;
-	}*/
 };
 
 class Mine : public Tile {
@@ -97,6 +102,7 @@ public:
 					numBombs += 1;}
 			}
 		}
+
 		else if (tilerow == configuration.size() - 1) {
 			neighbors[1] = &numberedtiles.at(tilerow - 1).at(tilecol);
 
@@ -227,8 +233,4 @@ public:
 			configuration.at(tilerow).at(tilecol) = numBombs;
 		}
 	}
-	/*~Number() {
-		delete[] neighbors;
-	}*/
 };
-
